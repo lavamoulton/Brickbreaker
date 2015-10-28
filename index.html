@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="randomColor.js"></script>
+        <meta charset="utf-8" />
+        <title>Brickbreaker</title>
+        <style>
+            * { padding:0; margin:0;}
+            canvas { background: #666666; display: block; margin:0 auto; }
+        </style>
+    </head>
+    <body>
+    
+        <canvas id="mainCanvas" width="720" height="540"></canvas>
+        
+        <script>
+            
+            //returns a random color
+            function setRandomColor() {
+                return randomColor();
+            }
+        
+            //get reference to canvas
+            //reference to context to handle drawing to canvas
+            var canvas = document.getElementById("mainCanvas");
+            var context = canvas.getContext("2d");
+            
+            // initial position of the ball
+            var x = canvas.width / 2;
+            var y = canvas.height - 30;
+            
+            //initial speed of the ball
+            var dx = 2;
+            var dy = -2;
+            
+            //radius of the ball
+            var ballRadius = 10;
+            
+            //initial color of the ball
+            var ballColor = setRandomColor();
+            
+            //initial variables for the paddle
+            var paddleHeight = 10;
+            var paddleWidth = 75;
+            var paddleX = (canvas.width - paddleWidth) / 2;
+            var paddleColor = setRandomColor();
+            
+            //booleans for user input
+            var rightPressed = false;
+            var leftPressed = false;
+            
+            //initial variables for the bricks
+            var brickRows = 3;
+            var brickColumns = 5;
+            var brickWidth = 70;
+            var brickHeight = 17;
+            var brickPadding = 50;
+            var brickGapTop = 50;
+            var brickGapLeft = 85;
+                    
+            //initial score
+            var score = 0;
+            var scoreColor = setRandomColor();
+                    
+            //initial lives
+            var lives = 3;
+            var livesColor = setRandomColor();
+            
+            //create array of bricks
+            var brickArray = [];
+            for (c = 0; c < brickColumns; c++) {
+                brickArray[c] = [];
+                for (r = 0; r < brickRows; r++) {
+                    brickArray[c][r] = { x: 0, y: 0, color:setRandomColor(), status: 1 };
+                }
+            }
+            
+            //handles drawing the bricks
+            function drawBricks() {
+                for (var c = 0; c < brickColumns; c++) {
+                    for (var r = 0; r < brickRows; r++) {
+                        if (brickArray[c][r].status == 1) {
+                            var brickX = (c*(brickWidth+brickPadding)) + brickGapLeft;
+                            var brickY = (r*(brickHeight+brickPadding)) + brickGapTop;
+                            brickArray[c][r].x = brickX;
+                            brickArray[c][r].y = brickY;
+                            var tempColor = brickArray[c][r].color
+                            context.beginPath();
+                            context.rect(brickX, brickY, brickWidth, brickHeight);
+                            context.fillStyle = tempColor;
+                            context.fill();
+                            context.closePath();
+                        }
+                    }
+                }
+            }
+            
+            //handles drawing the ball
+            function drawBall() {
+                context.beginPath();
+                context.arc(x, y, ballRadius, 0, Math.PI*2);
+                context.fillStyle = ballColor;
+                context.fill();
+                context.closePath();
+            }
+            
+            //handles drawing the paddle
+            function drawPaddle() {
+                context.beginPath();
+                context.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+                context.fillStyle = paddleColor;
+                context.fill();
+                context.closePath();
+            }
+            
+            function updatePaddle() {
+                if(rightPressed && paddleX < canvas.width-paddleWidth) {
+                    paddleX += 7;
+                }
+                else if(leftPressed && paddleX > 0) {
+                    paddleX -= 7;
+                }
+            }
+            
+            //called each interval
+            function draw() {
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                drawScore();
+                drawLives();
+                drawBricks();
+                drawBall();
+                drawPaddle();
+                updatePaddle();
+                checkBallCollision();
+                x += dx;
+                y += dy;
+                requestAnimationFrame(draw);
+            }
+            
+            //slowly increases speed of the ball on each collision
+            function updateBallSpeed() {
+                if (dx < 0) {
+                    dx = dx - 0.25;
+                } else if (dx > 0) {
+                    dx = dx + 0.25;
+                }
+                if (dy < 0) {
+                    dy = dy - 0.25;
+                } else if (dy > 0) {
+                    dy = dy + 0.25;
+                }
+            }        
+                    
+            //checks if the ball collides with the walls
+            function checkBallCollision() {
+                //wall collision
+                if (x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+                    dx = -dx;
+                    ballColor = setRandomColor();
+                }
+                if (y + dy < ballRadius) {
+                    dy = -dy;   
+                    ballColor = setRandomColor();
+                } else if (y + dy > canvas.height - ballRadius) {
+                    if(x > paddleX && x < paddleX + paddleWidth) {
+                        if (y = y-paddleHeight) {
+                            dy = -dy;
+                            updateBallSpeed();
+                        }
+                    } else {
+                        lives--;
+                        if (lives == 0) {
+                            alert("GAME OVER");
+                            document.location.reload();
+                        }
+                        else {
+                            x = canvas.width / 2;
+                            y = canvas.height-30;
+                            dx = 2;
+                            dx = -2;
+                            paddleX = (canvas.width-paddleWidth)/2
+                        }
+                    }
+                }
+                //brick collision
+                checkBrickCollision();
+            }
+                    
+            //checks brick collision
+            function checkBrickCollision() {
+                for (c = 0; c < brickColumns; c++) {
+                    for (r = 0; r < brickRows; r++) {
+                        var tempBrick = brickArray[c][r];
+                        if (tempBrick.status == 1) {
+                            if (x + dx > tempBrick.x - ballRadius && x + dx < tempBrick.x + brickWidth + ballRadius && y + dy > tempBrick.y - ballRadius && y + dy < tempBrick.y + brickHeight + ballRadius ) {
+                                dy = -dy;
+                                updateBallSpeed();
+                                ballColor = setRandomColor();
+                                tempBrick.status = 0;
+                                score++;
+                                if (score == brickRows * brickColumns) {
+                                    alert("You Win!");
+                                    document.location.reload();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+                    
+            function drawScore() {
+                context.font = "20px Arial";
+                context.fillStyle = scoreColor;
+                context.fillText("Score: " + score, 8, 20);
+            }
+                    
+            function drawLives() {
+                context.font = "20px Arial";
+                context.fillStyle = livesColor;
+                context.fillText("Lives: " + lives, canvas.width-80, 20);
+            }
+            
+            //event listeners for user input
+            document.addEventListener("keydown", keyDownHandler, false);
+            document.addEventListener("keyup", keyUpHandler, false);
+            document.addEventListener("mousemove", mouseMoveHandler, false);
+                    
+            function mouseMoveHandler(e) {
+                var relativeX = e.clientX - canvas.offsetLeft;
+                if (relativeX - paddleWidth/2 > 0 && relativeX + paddleWidth/2 < canvas.width) {
+                    paddleX = relativeX - paddleWidth/2;
+                }
+            }
+            
+            //functions to handle key down and key up events
+            function keyDownHandler(e) {
+                if(e.keyCode == 39) {
+                    rightPressed = true;
+                }
+                else if(e.keyCode == 37) {
+                    leftPressed = true;
+                }
+            }
+            
+            function keyUpHandler(e) {
+                if(e.keyCode == 39) {
+                    rightPressed = false;
+                }
+                else if(e.keyCode == 37) {
+                    leftPressed = false;
+                }
+            }
+            
+            //refresh every 10 seconds
+            draw();
+            
+            /*
+            //test code to draw a red square
+            context.beginPath();
+            context.rect(20, 40, 50, 50);
+            context.fillStyle = "#FF0000";
+            context.fill();
+            context.closePath();
+            
+            //test code to draw a green circle
+            context.beginPath();
+            context.arc(240, 160, 20, 0, Math.PI*2, false);
+            context.fillStyle = "green";
+            context.fill();
+            context.closePath();
+            
+            //test code to only draw outer stroke of a rectangle
+            context.beginPath();
+            context.rect(160, 10, 100, 40);
+            context.strokeStyle = "rgba(0, 0, 255, 0.5)";
+            context.stroke();
+            context.closePath();
+            */
+        </script>
+    </body>
+</html>
